@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel2Doc</title>
+    <style>
+        html,
+        body {
+            font-size: 1.25rem;
+        }
+
+        #root {
+            width: fit-content;
+            height: 98vh;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            flex-flow: column;
+        }
+
+        #header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+
+        #header>div:first-child {
+            padding-right: 1rem;
+            font-size: 1.75rem;
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        }
+
+        #header>div:nth-child(2) {
+
+            font-size: 1rem;
+            text-overflow: ellipsis;
+        }
+
+        #mainBody {
+            flex: 1;
+        }
+
+
+        input[type='file'],
+        input[type='text'],
+        input[type='number'],
+        input[type='submit'],
+        button,
+        select {
+            font-size: 1.0rem;
+            /* width: 10pc; */
+        }
+
+        #form {
+            display: grid;
+            grid-auto-flow: row;
+            grid-column-gap: .5em;
+            grid-row-gap: 0.5em;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(3, max-content);
+            align-items: center;
+        }
+
+        hr {
+            height: 1px;
+            background-color: black;
+        }
+        li{
+            margin: 7px 0 ;
+        }
+
+
+        #note {
+            font-style: italic;
+            font-size: medium;
+            text-align: center;
+            width: 60%;
+            margin: 5em auto;
+        }
+
+        #footer {
+            font-size: 0.9rem;
+            text-align: center;
+            font-style: italic;
+        }
+
+        #gridElem {
+            display: grid;
+            grid-template-columns: max-content max-content;
+            grid-column-gap: 1em;
+            grid-row-gap: 1em;
+            margin-bottom: 3em;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.3/xlsx.full.min.js" onerror="loadError()"></script>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js" onerror="loadError()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js" onerror="loadError()"></script>
+
+    <div id="root">
+        <div id="header">
+            <div>Excel2Doc</div>
+            <div style="font-style: italic;">Autofill Doc template from Excel files</div>
+            <hr>
+        </div>
+        <div id="mainBody">
+            <div id="gridElem">
+                <label for="avatar">Excel/CSV file:</label>
+                <input type="file" id="excelElem"
+                    accept=".csv,application/vnd.ms-excel,.xlt,application/vnd.ms-excel,.xla,application/vnd.ms-excel,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xltx,application/vnd.openxmlformats-officedocument.spreadsheetml.template,.xlsm,application/vnd.ms-excel.sheet.macroEnabled.12,.xltm,application/vnd.ms-excel.template.macroEnabled.12,.xlam,application/vnd.ms-excel.addin.macroEnabled.12,.xlsb,application/vnd.ms-excel.sheet.binary.macroEnabled.12">
+                <label for="avatar">Template doc file:</label>
+                <input type="file" id="docTemplate" accept=".doc,.docx">
+                <div style="text-align: center; grid-column: span 2;"><button id="button">Generate and Download</button>
+                </div>
+            </div>
+
+            <div id="Notes" >
+                <div>Notes:</div>
+                <div style="width: 500px; font-size: 0.8em; text-align: justify;">
+                    <ol>
+                        <li>The template doc uses tags to fill data from excell file. A tag is a column name contained within double curly braces. 
+                            Each tag in the template document will be replaced by its corresponding column data.
+                            Any space in column name must be replaced by _ in the tag.
+                            For example, data from the column "Column 1" will replace the tag "{{Column_1}}".
+                        </li>
+                        <li>Column names should be on the 1st row of the excel file</li>
+                        <li>Individual file will be generated for each rows of the excel file with the row number indicated in file name.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div id="footer">
+            <div id="add">
+                Created by <a href="https://github.com/Koushikphy"> Koushikphy</a>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <script>
+        const excelFile = document.getElementById('excelElem')
+        const docTemplate = document.getElementById('docTemplate')
+        const button = document.getElementById('button')
+        var docFile, excelData;
+
+
+        docTemplate.onchange = (event) => {
+            var f = event.target.files[0];
+            console.log(f)
+            if (f) {
+                var r = new FileReader();
+                r.onload = e => {
+                    docFile = e.target.result
+                }
+                r.readAsBinaryString(f)
+            } else {
+                alert("Failed to read file.")
+            }
+        }
+
+        excelFile.onchange = (event) => {
+            var f = event.target.files[0];
+            console.log(f)
+            if (f) {
+                var r = new FileReader();
+                r.onload = e => {
+                    // console.log(e)
+                    excelData = processExcel(e.target.result);
+                    console.log(excelData)
+                }
+                r.readAsBinaryString(f);
+            } else {
+                alert("Failed to read file.")
+            }
+        }
+
+        button.onclick = (event) => {
+            if (docFile == null) { alert('No docx template found'); return }
+            if (excelData == null) { alert('No excel file found'); return }
+            try {
+                createPatch()
+            } catch (error) {
+                console.error(error, error.stack)
+                alert('Something went wrong. Unable to fill data.')
+            }
+            // Should we clear the whole thing?!
+            // docFile = null
+            // excelData = null
+        }
+
+
+        function processExcel(data) {
+            var workbook = XLSX.read(data, {
+                type: 'binary'
+            });
+            var firstSheet = workbook.SheetNames[0];
+            var result = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 0 });
+            return result // JSON.stringify(result, 2, 2)
+        };
+
+
+        function createPatch() {
+            excelData.forEach((element, index) => {
+                var thisVal = element
+
+                var pat = {}
+                for (key in thisVal) {
+                    var nKey = key.replace(' ', '_') // use key as underscored column names
+                    var elem = {
+                        type: docx.PatchType.PARAGRAPH,
+                        children: [new docx.TextRun(thisVal[key].toString())], // this requires a string
+                    }
+                    pat[nKey] = elem
+                }
+
+                docx.patchDocument(docFile, { patches: pat }).then(res => {
+                    blob = new Blob([res], {
+                        type: 'application/octet-stream'
+                    });
+                    saveAs(blob, `document_row_${index + 2}.docx`);
+                    // data in excel file start from row 2, index start from 0
+                });
+            });
+        }
+
+
+
+        function test(data) {
+            var tt = data
+
+            var pat = {}
+            for (key in tt) {
+                var nKey = key.replace(' ', '_')
+                var elem = {
+                    type: docx.PatchType.PARAGRAPH,
+                    children: [new docx.TextRun(tt[key].toString())],
+                }
+                console.log(nKey, tt[key].toString(), elem)
+                pat[nKey] = elem
+            }
+            console.log(pat)
+            docx.patchDocument(docFile, { patches: pat }).then(res => {
+                blob = new Blob([res], {
+                    type: 'application/octet-stream'
+                });
+                saveAs(blob, "example_new.docx");
+            });
+        }
+
+
+        function loadError() {
+            alert('Unable to download dependencies !!!')
+        }
+
+
+        // function generate() {
+        //     const doc = new docx.Document({
+        //         sections: [{
+        //             properties: {},
+        //             children: [
+        //                 new docx.Paragraph({
+        //                     children: [
+        //                         new docx.TextRun("Hello World"),
+        //                         new docx.TextRun({
+        //                             text: "Foo Bar",
+        //                             bold: true,
+        //                         }),
+        //                         new docx.TextRun({
+        //                             text: "\tGithub is the best",
+        //                             bold: true,
+        //                         }),
+        //                     ],
+        //                 }),
+        //             ],
+        //         }]
+        //     });
+
+        //     console.log(doc)
+        //     docx.Packer.toBlob(doc).then(blob => {
+        //         console.log(blob);
+        //         saveAs(blob, "example.docx");
+        //         console.log("Document created successfully");
+        //     });
+        // }
+
+        // getPatches = (fields: { [key: string]: string }) => {
+        //     const patches: { [key: string]: IPatch } = {};
+
+        //     for (const field in fields) {
+        //         patches[field] = {
+        //             type: PatchType.PARAGRAPH,
+        //             children: [new TextRun({ text: fields[field], font })],
+        //         };
+        //     }
+
+        //     return patches;
+        // };
+
+        // const patches = getPatches({
+        //     name: "Mr",
+        //     table_heading_1: "John",
+        //     item_1: "Doe",
+        //     paragraph_replace: "Lorem ipsum paragraph",
+        // });
+
+    </script>
+</body>
+
+</html>
