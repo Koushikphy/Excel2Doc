@@ -147,7 +147,7 @@
     <script>
         var docFile, excelData;
 
-        getElementById('docTemplate').onchange = (event) => {
+        document.getElementById('docTemplate').onchange = (event) => {
             var f = event.target.files[0];
             console.log(f)
             if (f) {
@@ -161,7 +161,7 @@
             }
         }
 
-        getElementById('excelElem').onchange = (event) => {
+        document.getElementById('excelElem').onchange = (event) => {
             var f = event.target.files[0];
             console.log(f)
             if (f) {
@@ -177,7 +177,7 @@
             }
         }
 
-        getElementById('button').onclick = (event) => {
+        document.getElementById('button').onclick = (event) => {
             if (docFile == null) { alert('No docx template found'); return }
             if (excelData == null) { alert('No excel file found'); return }
             try {
