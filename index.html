@@ -109,11 +109,13 @@
         </div>
         <div id="mainBody">
             <div id="gridElem">
-                <label for="avatar">Excel/CSV file:</label>
+                <label>Excel/CSV file:</label>
                 <input type="file" id="excelElem"
                     accept=".csv,application/vnd.ms-excel,.xlt,application/vnd.ms-excel,.xla,application/vnd.ms-excel,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xltx,application/vnd.openxmlformats-officedocument.spreadsheetml.template,.xlsm,application/vnd.ms-excel.sheet.macroEnabled.12,.xltm,application/vnd.ms-excel.template.macroEnabled.12,.xlam,application/vnd.ms-excel.addin.macroEnabled.12,.xlsb,application/vnd.ms-excel.sheet.binary.macroEnabled.12">
-                <label for="avatar">Template doc file:</label>
+                <label>Template doc file:</label>
                 <input type="file" id="docTemplate" accept=".doc,.docx">
+                <label>Filename Template</label>
+                <input type="text" id="fileName" value="document_{{__row__}}.docx">
                 <div style="text-align: center; grid-column: span 2;"><button id="button">Generate and Download</button>
                 </div>
             </div>
@@ -203,24 +205,39 @@
 
 
         function createPatch() {
-            excelData.forEach((element, index) => {
+            // TODO: blank rows
+            // var nameVal = "document_{{Column_2}}_{{__row__}}.docx"
+            const nameVal = document.getElementById('fileName').value
+            var listOfTags = [...nameVal.matchAll(/{{.*?}}/g)].map(m=>m[0]) // find if any tag in name
+
+            excelData.forEach((element, index) => { // iterate over rows
+                var titleVal = nameVal
                 var thisVal = element
+                console.log(thisVal)
 
                 var pat = {}
-                for (key in thisVal) {
+                for (key in thisVal) { // iterate over columns 
                     var nKey = key.replace(' ', '_') // use key as underscored column names
+                    var val = thisVal[key].toString()
                     var elem = {
                         type: docx.PatchType.PARAGRAPH,
-                        children: [new docx.TextRun(thisVal[key].toString())], // this requires a string
+                        children: [new docx.TextRun(val)], // this requires a string
                     }
                     pat[nKey] = elem
+
+                    // check if this clumn tag is in the name
+                    if (listOfTags.includes(`{{${nKey}}}`)) titleVal = titleVal.replace(`{{${nKey}}}`, val)
                 }
+                if  ((!titleVal.endsWith('.doc')) && (!titleVal.endsWith('.docx'))) titleVal += '.docx'
+                titleVal = titleVal.replace('{{__row__}}',`${thisVal['__rowNum__']+1}`)
+                console.log(titleVal)
 
                 docx.patchDocument(docFile, { patches: pat }).then(res => {
                     blob = new Blob([res], {
                         type: 'application/octet-stream'
                     });
-                    saveAs(blob, `document_row_${index + 2}.docx`);
+                    // saveAs(blob, `document_row_${index + 2}.docx`);
+                    saveAs(blob, titleVal);
                     // data in excel file start from row 2, index start from 0
                 });
             });
