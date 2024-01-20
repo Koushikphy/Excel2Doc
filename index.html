@@ -99,7 +99,8 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.3/xlsx.full.min.js" onerror="loadError()"></script>
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js" onerror="loadError()"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js" onerror="loadError()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js" onerror="loadError()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" onerror="loadError()"></script>
 
     <div id="root">
         <div id="header">
@@ -151,7 +152,6 @@
 
         document.getElementById('docTemplate').onchange = (event) => {
             var f = event.target.files[0];
-            console.log(f)
             if (f) {
                 var r = new FileReader();
                 r.onload = e => {
@@ -165,7 +165,6 @@
 
         document.getElementById('excelElem').onchange = (event) => {
             var f = event.target.files[0];
-            console.log(f)
             if (f) {
                 var r = new FileReader();
                 r.onload = e => {
@@ -210,7 +209,9 @@
             const nameVal = document.getElementById('fileName').value
             var listOfTags = [...nameVal.matchAll(/{{.*?}}/g)].map(m=>m[0]) // find if any tag in name
 
-            excelData.forEach((element, index) => { // iterate over rows
+            const zip = new JSZip();
+
+            const allFiles = excelData.map((element, index) => { // iterate over rows
                 var titleVal = nameVal
                 var thisVal = element
                 console.log(thisVal)
@@ -229,18 +230,24 @@
                     if (listOfTags.includes(`{{${nKey}}}`)) titleVal = titleVal.replace(`{{${nKey}}}`, val)
                 }
                 if  ((!titleVal.endsWith('.doc')) && (!titleVal.endsWith('.docx'))) titleVal += '.docx'
-                titleVal = titleVal.replace('{{__row__}}',`${thisVal['__rowNum__']+1}`)
-                console.log(titleVal)
 
-                docx.patchDocument(docFile, { patches: pat }).then(res => {
+                titleVal = titleVal.replace('{{__row__}}',`${thisVal['__rowNum__']+1}`)
+                // console.log(titleVal)
+
+                return docx.patchDocument(docFile, { patches: pat }).then(res => {
                     blob = new Blob([res], {
                         type: 'application/octet-stream'
                     });
-                    // saveAs(blob, `document_row_${index + 2}.docx`);
-                    saveAs(blob, titleVal);
-                    // data in excel file start from row 2, index start from 0
+                    zip.file(titleVal, blob)
+                    // saveAs(blob, titleVal); // individual files download
                 });
             });
+
+            Promise.all(allFiles).then(()=>{
+                zip.generateAsync({type:"blob"}).then(function(content) {
+                    saveAs(content, "excel2doc_files.zip"); // download as zip
+                });
+            })
         }
 
 
