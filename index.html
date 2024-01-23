@@ -128,10 +128,12 @@
                         <li>The template doc uses tags to fill data from excel file. A tag is a column name contained within double curly braces. 
                             Each tag in the template document will be replaced by its corresponding column data.
                             Any space in column name must be replaced by _ in the tag.
-                            For example, data from the column "Column 1" will replace the tag "{{Column_1}}".
+                            For example, data from the column "Column 1" will replace the tag "{{Column_1}}". 
+                            Tags can be used in file name too.
                         </li>
                         <li>Column names should be on the 1st row of the excel file</li>
-                        <li>Individual file will be generated for each rows of the excel file with the row number indicated in file name.</li>
+                        <li>A special tag "{{__row__}}" can be used in filename, which will be replaced by the index of the row in the excel file. 
+                        </li>
                     </ol>
                 </div>
             </div>
